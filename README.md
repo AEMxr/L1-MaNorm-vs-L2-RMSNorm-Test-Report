@@ -1,5 +1,5 @@
 # L1-MaNorm-vs-L2-RMSNorm-Test-Report
-This is a 30 seed, 5 corpus analysis study on an L1 variant of RMSNorm
+This is a planned 30 seed, 5-corpus study on an L1 variant of RMSNorm.
 Currently, only 1 corpus using the book "The City of God" as material is available.
 
 I decided to do an indepth analysis on RMSNorm to better understand how it works.  I broke the normalizer down to the fundamental levels, inspected the step by step process happening in the GPU and CPU, and wrote my own L1 variant formula to see what would happen.  My variant, MeanAbsNorm (MANorm, or MA), isn't using kernel manipulation or other support features to improve its performance in the same way RMSNorm (RMS) is established.  There are further optimizations that would give MA a better performance vs RMS.
@@ -34,7 +34,7 @@ class MeanAbsNorm(nn.Module):
         return x / (scale + self.eps) * self.weight
 ```
 # Stats
-Both RMS and MA contain 202 operations as the dynamo results show.  Every curve csv has its corresponding png plot for easy readability. the text file, norm_runs_report_20260422.txt, gives a more legible general report on transformer model configurations, train loss, validation loss, step speed, and memory use:
+Both RMS and MA contain 202 operations as the dynamo results show.  Every curve csv has its corresponding png plot for easy readability. the text file, norm_runs_report_20260422.txt, gives a more legible general report on transformer model configurations, final train loss, final validation loss, step speed, and memory use:
 ```
 Summary table
 
@@ -111,7 +111,9 @@ Sometimes the raw gap is easier to read than percentages. These are straight ave
 
 MeanAbs is not winning cleanly across the board. It gets a **better final validation loss average** than RMS, and it also uses **less reserved memory** while showing a slightly **lower gradient norm** and slightly **later overfit onset** on average. But RMS still has the edge on **train loss**, **best validation loss**, and basically all the **speed/throughput** metrics.
 
-The practical interpretation is: for this run, **MeanAbs looks slightly more favorable on average validation at the end of training**, but **RMS still looks a bit cleaner overall** because it trains faster, reaches a slightly better best checkpoint on average, and has lower training loss. The gap on best validation is very small: `1.4022` for MeanAbs vs `1.3984` for RMS, which is only about **0.27%** in RMS’s favor. The end-of-run validation gap goes the other way: `1.5059` for MeanAbs vs `1.5323` for RMS, about **1.72%** in MeanAbs’s favor.
+The practical interpretation is: for this run, **MeanAbs looks slightly more favorable on average validation at the end of training**, but **RMS still looks a bit cleaner overall** because it trains faster, reaches a slightly better best checkpoint on average, and has lower training loss. The gap on best validation is very small: `1.4022` for MeanAbs vs `1.3984` for RMS, which is only about **0.27%** in RMS’s favor. The end-of-run validation gap goes the other way: `1.5059` for MeanAbs vs `1.5323` for RMS, about **1.72%** in MeanAbs’s favor.  Kernel and other ecosystem optimizations may improve MA validation loss including a differently weighted C value rather than the current Gaussian correction, and taking a less operation step approach for both forward and backward passes.
 
-`meanabs_nocorr` is the obvious loser here. It is much worse on train loss, val loss, and best val loss, even though it is marginally faster than both. That speed edge is too small to matter given the quality drop.
+`meanabs_nocorr` is the obvious loser here. It is much worse on train loss, val loss, and best val loss, even though it is marginally faster than both. That speed edge is too small to matter given the quality drop.  The Gaussian or similar correction is needed for competitive results.
+
+Fun thought, L1 variants of RMSNorm have the potential to be better (validation loss, speed, memory) with proper environment configurations.  A 352MB VRAM savings may justify the customizations. 
 
