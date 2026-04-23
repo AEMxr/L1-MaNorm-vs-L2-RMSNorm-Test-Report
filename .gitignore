@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+venv/
+env/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# OS/editor junk
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Training artifacts / checkpoints
+checkpoints/
+runs/
+artifacts/
+*.pt
+*.pth
+*.ckpt
+*.npz
+
+# Large raw logs or temp outputs
+*.tmp
+*.bak
