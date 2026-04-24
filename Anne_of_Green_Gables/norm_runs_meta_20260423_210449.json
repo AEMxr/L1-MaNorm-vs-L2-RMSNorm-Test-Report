@@ -1,0 +1,50 @@
+{
+  "stamp": "20260423_210449",
+  "raw_csv": "norm_runs_cityofgod\\norm_runs_raw_20260423_210449.csv",
+  "summary_csv": "norm_runs_cityofgod\\norm_runs_summary_20260423_210449.csv",
+  "report_txt": "norm_runs_cityofgod\\norm_runs_report_20260423_210449.txt",
+  "outdir": "norm_runs_cityofgod",
+  "run_count": 90,
+  "norms": [
+    "rms",
+    "meanabs",
+    "meanabs_nocorr"
+  ],
+  "seeds": [
+    598422775,
+    1786548453,
+    1426323417,
+    736896387,
+    1722602715,
+    1639699922,
+    1048955721,
+    370076197,
+    188292180,
+    482242919,
+    676750256,
+    405379411,
+    130604721,
+    1310941852,
+    1162914961,
+    1109572572,
+    1431649702,
+    1497939373,
+    741210827,
+    129344154,
+    273318888,
+    1718616343,
+    1970508508,
+    336498026,
+    1301334618,
+    1258359901,
+    2022903755,
+    281919623,
+    922641176,
+    1225032379
+  ],
+  "notes": {
+    "curve_files": "One CSV per norm+seed when eval_every > 0.",
+    "memory_reset": "Each run happens in its own child process, then CUDA cache is cleaned before exit.",
+    "alpha_behavior": "alpha is only applied by maxmean; other norms ignore it and omit it from the report."
+  }
+}
