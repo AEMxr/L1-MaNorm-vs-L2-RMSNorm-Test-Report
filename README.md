@@ -64,13 +64,13 @@ All tested methods normalize over the hidden dimension of each token independent
 RMSNorm rescales the hidden vector using its root-mean-square magnitude:
 
 $$
-\operatorname{RMS}(x) = \sqrt{\frac{1}{d}\sum_{i=1}^{d}x_i^2 + \epsilon}
+\mathrm{RMS}(x) = \sqrt{\frac{1}{d}\sum_{i=1}^{d}x_i^2 + \epsilon}
 $$
 
 The normalized output is:
 
 $$
-y_i = \gamma_i \frac{x_i}{\operatorname{RMS}(x)}
+y_i = \gamma_i \frac{x_i}{\mathrm{RMS}(x)}
 $$
 
 Equivalently:
@@ -84,19 +84,19 @@ $$
 MeanAbsNorm replaces the RMS scale statistic with mean absolute magnitude:
 
 $$
-\operatorname{MA}(x) = \frac{1}{d}\sum_{i=1}^{d}\lvert x_i \rvert
+\mathrm{MA}(x) = \frac{1}{d}\sum_{i=1}^{d}\lvert x_i \rvert
 $$
 
 The corrected MeanAbsNorm scale is:
 
 $$
-\operatorname{MeanAbsScale}(x) = C \cdot \operatorname{MA}(x) + \epsilon
+\mathrm{MeanAbsScale}(x) = C \cdot \mathrm{MA}(x) + \epsilon
 $$
 
 The normalized output is:
 
 $$
-y_i = \gamma_i \frac{x_i}{C \cdot \operatorname{MA}(x) + \epsilon}
+y_i = \gamma_i \frac{x_i}{C \cdot \mathrm{MA}(x) + \epsilon}
 $$
 
 Equivalently:
@@ -110,13 +110,13 @@ $$
 MeanAbsNorm-NoCorr removes the correction constant and uses the raw mean absolute magnitude as the scale statistic:
 
 $$
-\operatorname{NoCorrScale}(x) = \operatorname{MA}(x) + \epsilon
+\mathrm{NoCorrScale}(x) = \mathrm{MA}(x) + \epsilon
 $$
 
 The normalized output is:
 
 $$
-y_i = \gamma_i \frac{x_i}{\operatorname{MA}(x) + \epsilon}
+y_i = \gamma_i \frac{x_i}{\mathrm{MA}(x) + \epsilon}
 $$
 
 Equivalently:
@@ -163,9 +163,9 @@ The three tested methods differ only in the scale statistic used in the denomina
 
 | Method | Scale Statistic | Normalized Form |
 |---|---|---|
-| RMSNorm | $\sqrt{\operatorname{mean}(x^2) + \epsilon}$ | $x / \sqrt{\operatorname{mean}(x^2) + \epsilon}$ |
-| MeanAbsNorm | $C \cdot \operatorname{mean}(\lvert x \rvert) + \epsilon$ | $x / (C \cdot \operatorname{mean}(\lvert x \rvert) + \epsilon)$ |
-| MeanAbsNorm-NoCorr | $\operatorname{mean}(\lvert x \rvert) + \epsilon$ | $x / (\operatorname{mean}(\lvert x \rvert) + \epsilon)$ |
+| RMSNorm | $\sqrt{\mathrm{mean}(x^2) + \epsilon}$ | $x / \sqrt{\mathrm{mean}(x^2) + \epsilon}$ |
+| MeanAbsNorm | $C \cdot \mathrm{mean}(\lvert x \rvert) + \epsilon$ | $x / (C \cdot \mathrm{mean}(\lvert x \rvert) + \epsilon)$ |
+| MeanAbsNorm-NoCorr | $\mathrm{mean}(\lvert x \rvert) + \epsilon$ | $x / (\mathrm{mean}(\lvert x \rvert) + \epsilon)$ |
 
 All three tested methods:
 
@@ -653,7 +653,7 @@ $$
 The median, minimum, and maximum are also reported for each metric:
 
 $$
-\operatorname{median}(G_{c,m}), \quad \min(G_{c,m}), \quad \max(G_{c,m})
+\mathrm{median}(G_{c,m}), \quad \min(G_{c,m}), \quad \max(G_{c,m})
 $$
 
 The existing training script writes mean, standard deviation, minimum, and maximum into the generated summary CSV. Median and confidence intervals are computed from the raw per-seed rows for the manuscript tables.
@@ -735,7 +735,7 @@ Win counts report how often one method has the preferred value across matched se
 For loss and memory metrics, a lower value is counted as a win:
 
 $$
-\operatorname{win}_i =
+\mathrm{win}_i =
 \begin{cases}
 1, & x_{i,\text{variant}} < x_{i,\text{baseline}} \\
 0, & \text{otherwise}
@@ -745,7 +745,7 @@ $$
 For throughput metrics, a higher value is counted as a win:
 
 $$
-\operatorname{win}_i =
+\mathrm{win}_i =
 \begin{cases}
 1, & x_{i,\text{variant}} > x_{i,\text{baseline}} \\
 0, & \text{otherwise}
@@ -755,7 +755,7 @@ $$
 The win count is:
 
 $$
-W = \sum_{i=1}^{n}\operatorname{win}_i
+W = \sum_{i=1}^{n}\mathrm{win}_i
 $$
 
 Win counts are reported as:
