@@ -2,7 +2,7 @@
 
 ## Abstract
 
-This report presents an ablation study of three hidden-vector normalization methods in byte-level decoder-only transformer training: RMSNorm, corrected MeanAbsNorm, and uncorrected MeanAbsNorm-NoCorr. RMSNorm uses root-mean-square scaling, while MeanAbsNorm replaces the RMS statistic with mean absolute magnitude, optionally calibrated by the Gaussian correction constant \(C=\sqrt{\pi/2}\). The study measures how these scale statistics affect validation behavior, overfitting dynamics, throughput, memory use, and corpus sensitivity under controlled architecture, optimizer, data split, and seed conditions.
+This report presents an ablation study of three hidden-vector normalization methods in byte-level decoder-only transformer training: RMSNorm, corrected MeanAbsNorm, and uncorrected MeanAbsNorm-NoCorr. RMSNorm uses root-mean-square scaling, while MeanAbsNorm replaces the RMS statistic with mean absolute magnitude, optionally calibrated by the Gaussian correction constant $C=\sqrt{\pi/2}$. The study measures how these scale statistics affect validation behavior, overfitting dynamics, throughput, memory use, and corpus sensitivity under controlled architecture, optimizer, data split, and seed conditions.
 
 The current results cover two completed corpora, *The City of God* and *Anne of Green Gables*, with 30 random seeds per normalization method per corpus. On *The City of God*, RMSNorm achieves the lowest best validation loss and lowest average checkpoint validation loss, while MeanAbsNorm achieves lower final reported validation loss and a smaller overfitting gap. On *Anne of Green Gables*, MeanAbsNorm slightly outperforms RMSNorm across best validation loss, final reported validation loss, average checkpoint validation loss, overfitting gap, throughput, and reserved memory.
 
@@ -41,11 +41,11 @@ Contributions of this report:
 
 ## 3. Related Work and Distinction
 
-Normalization methods are widely used to stabilize neural network training by controlling activation scale. Layer Normalization was introduced as an alternative to Batch Normalization that computes normalization statistics from the hidden units within a layer for each individual training case, avoiding dependence on mini-batch statistics. Unlike Batch Normalization, LayerNorm applies the same computation during training and inference. :contentReference[oaicite:0]{index=0}
+Normalization methods are widely used to stabilize neural network training by controlling activation scale. Layer Normalization was introduced as an alternative to Batch Normalization that computes normalization statistics from the hidden units within a layer for each individual training case, avoiding dependence on mini-batch statistics. Unlike Batch Normalization, LayerNorm applies the same computation during training and inference.[0]
 
-RMSNorm modifies LayerNorm by removing the re-centering operation and retaining only root-mean-square rescaling. Zhang and Sennrich proposed RMSNorm on the hypothesis that re-centering invariance is not always necessary, while rescaling invariance remains useful for training stability and efficiency. RMSNorm is therefore the primary baseline in this study because the tested MeanAbsNorm variants follow the same general no-mean-centering structure. :contentReference[oaicite:1]{index=1}
+RMSNorm modifies LayerNorm by removing the re-centering operation and retaining only root-mean-square rescaling. Zhang and Sennrich proposed RMSNorm on the hypothesis that re-centering invariance is not always necessary, while rescaling invariance remains useful for training stability and efficiency. RMSNorm is therefore the primary baseline in this study because the tested MeanAbsNorm variants follow the same general no-mean-centering structure. [1]
 
-Prior work has also explored L1-style normalization. Hoffer et al. studied alternatives to L2 BatchNorm, including L1 BatchNorm and \(L_{\infty}\)-based normalization, with emphasis on computational efficiency, memory behavior, and numerical stability. That work is relevant because it replaces an L2-style statistic with an L1-style statistic, but its normalization setting differs from the one tested here. :contentReference[oaicite:2]{index=2}
+Prior work has also explored L1-style normalization. Hoffer et al. studied alternatives to L2 BatchNorm, including L1 BatchNorm and $L_{\infty}$-based normalization, with emphasis on computational efficiency, memory behavior, and numerical stability. That work is relevant because it replaces an L2-style statistic with an L1-style statistic, but its normalization setting differs from the one tested here. [2]
 
 This study does not evaluate BatchNorm and does not use batch statistics. The tested MeanAbsNorm variants normalize each token's hidden activation vector independently, following the same general placement pattern as RMSNorm. They do not subtract the mean, do not compute centered deviations, and do not aggregate statistics across a batch.
 
@@ -55,116 +55,117 @@ The distinction is therefore structural: prior L1 BatchNorm work studies mean-ce
 
 ### 4.1 Notation
 
-Let \(x \in \mathbb{R}^d\) be the hidden activation vector normalized at a single token position, where \(d\) is the hidden dimension. Let \(\epsilon\) be a small numerical-stability constant, and let \(\gamma \in \mathbb{R}^d\) be the learned elementwise gain parameter.
+Let $x \in \mathbb{R}^d$ be the hidden activation vector normalized at a single token position, where $d$ is the hidden dimension. Let $\epsilon$ be a small numerical-stability constant, and let $\gamma \in \mathbb{R}^d$ be the learned elementwise gain parameter.
 
 All tested methods normalize over the hidden dimension of each token independently.
 
 ### 4.2 RMSNorm
 
-RMSNorm rescales the hidden vector using its root-mean-square magnitude: 
+RMSNorm rescales the hidden vector using its root-mean-square magnitude:
 
-\[ 
-\operatorname{RMS}(x) = \sqrt{\frac{1}{d}\sum_{i=1}^{d}x_i^2 + \epsilon} 
-\] 
+$$
+\operatorname{RMS}(x) = \sqrt{\frac{1}{d}\sum_{i=1}^{d}x_i^2 + \epsilon}
+$$
 
-\[ 
-y_i = \gamma_i \frac{x_i}{\operatorname{RMS}(x)} 
-\] 
+The normalized output is:
+
+$$
+y_i = \gamma_i \frac{x_i}{\operatorname{RMS}(x)}
+$$
 
 Equivalently:
 
-\[
+$$
 y_i = \gamma_i \frac{x_i}{\sqrt{\frac{1}{d}\sum_{j=1}^{d}x_j^2 + \epsilon}}
-\]
+$$
 
 ### 4.3 MeanAbsNorm
 
 MeanAbsNorm replaces the RMS scale statistic with mean absolute magnitude:
 
-\[
-\operatorname{MA}(x) = \frac{1}{d}\sum_{i=1}^{d}|x_i|
-\]
+$$
+\operatorname{MA}(x) = \frac{1}{d}\sum_{i=1}^{d}\lvert x_i \rvert
+$$
 
 The corrected MeanAbsNorm scale is:
 
-\[
+$$
 \operatorname{MeanAbsScale}(x) = C \cdot \operatorname{MA}(x) + \epsilon
-\]
+$$
 
 The normalized output is:
 
-\[
+$$
 y_i = \gamma_i \frac{x_i}{C \cdot \operatorname{MA}(x) + \epsilon}
-\]
+$$
 
 Equivalently:
 
-\[
-y_i = \gamma_i \frac{x_i}{C \cdot \frac{1}{d}\sum_{j=1}^{d}|x_j| + \epsilon}
-\]
+$$
+y_i = \gamma_i \frac{x_i}{C \cdot \frac{1}{d}\sum_{j=1}^{d}\lvert x_j \rvert + \epsilon}
+$$
 
 ### 4.4 MeanAbsNorm-NoCorr
 
 MeanAbsNorm-NoCorr removes the correction constant and uses the raw mean absolute magnitude as the scale statistic:
 
-\[
+$$
 \operatorname{NoCorrScale}(x) = \operatorname{MA}(x) + \epsilon
-\]
+$$
 
 The normalized output is:
 
-\[
+$$
 y_i = \gamma_i \frac{x_i}{\operatorname{MA}(x) + \epsilon}
-\]
+$$
 
 Equivalently:
 
-\[
-y_i = \gamma_i \frac{x_i}{\frac{1}{d}\sum_{j=1}^{d}|x_j| + \epsilon}
-\]
+$$
+y_i = \gamma_i \frac{x_i}{\frac{1}{d}\sum_{j=1}^{d}\lvert x_j \rvert + \epsilon}
+$$
 
 ### 4.5 Correction Constant
 
 The corrected MeanAbsNorm variant uses:
 
-\[
+$$
 C = \sqrt{\frac{\pi}{2}}
-\]
+$$
 
 This constant comes from the expected absolute value of a standard normal variable. For:
 
-\[
+$$
 Z \sim \mathcal{N}(0,1)
-\]
+$$
 
 the expected absolute value is:
 
-\[
-\mathbb{E}[|Z|] = \sqrt{\frac{2}{\pi}}
-\]
+$$
+\mathbb{E}[\lvert Z \rvert] = \sqrt{\frac{2}{\pi}}
+$$
 
 The reciprocal is:
 
-\[
-\frac{1}{\mathbb{E}[|Z|]} = \sqrt{\frac{\pi}{2}}
-\]
+$$
+\frac{1}{\mathbb{E}[\lvert Z \rvert]} = \sqrt{\frac{\pi}{2}}
+$$
 
-Therefore, multiplying mean absolute magnitude by \(C\) approximately aligns the expected mean-absolute scale with unit RMS scale under a zero-mean Gaussian assumption:
+Therefore, multiplying mean absolute magnitude by $C$ approximately aligns the expected mean-absolute scale with unit RMS scale under a zero-mean Gaussian assumption:
 
-\[
-C \cdot \mathbb{E}[|Z|] = \sqrt{\frac{\pi}{2}} \cdot \sqrt{\frac{2}{\pi}} = 1
-\]
+$$
+C \cdot \mathbb{E}[\lvert Z \rvert] = \sqrt{\frac{\pi}{2}} \cdot \sqrt{\frac{2}{\pi}} = 1
+$$
 
 ### 4.6 Scale-Statistic Comparison
-
 
 The three tested methods differ only in the scale statistic used in the denominator:
 
 | Method | Scale Statistic | Normalized Form |
 |---|---|---|
-| RMSNorm | \(\sqrt{\operatorname{mean}(x^2) + \epsilon}\) | \(x / \sqrt{\operatorname{mean}(x^2) + \epsilon}\) |
-| MeanAbsNorm | \(C \cdot \operatorname{mean}(|x|) + \epsilon\) | \(x / (C \cdot \operatorname{mean}(|x|) + \epsilon)\) |
-| MeanAbsNorm-NoCorr | \(\operatorname{mean}(|x|) + \epsilon\) | \(x / (\operatorname{mean}(|x|) + \epsilon)\) |
+| RMSNorm | $\sqrt{\operatorname{mean}(x^2) + \epsilon}$ | $x / \sqrt{\operatorname{mean}(x^2) + \epsilon}$ |
+| MeanAbsNorm | $C \cdot \operatorname{mean}(\lvert x \rvert) + \epsilon$ | $x / (C \cdot \operatorname{mean}(\lvert x \rvert) + \epsilon)$ |
+| MeanAbsNorm-NoCorr | $\operatorname{mean}(\lvert x \rvert) + \epsilon$ | $x / (\operatorname{mean}(\lvert x \rvert) + \epsilon)$ |
 
 All three tested methods:
 
@@ -172,9 +173,8 @@ All three tested methods:
 - normalize across the hidden dimension
 - do not use batch statistics
 - do not subtract the mean
-- use the same learned elementwise gain parameter \(\gamma\)
+- use the same learned elementwise gain parameter $\gamma$
 - differ only in the denominator scale statistic
-
 ## 5. Implementation Details
 
 The tested normalization variants were implemented as drop-in replacements at the same normalization sites in the decoder-only transformer. Each variant receives the same hidden activation tensor, uses the same learned gain parameter shape, and returns a tensor with the same shape as the input. The surrounding attention, feedforward, residual, optimizer, and training code are unchanged.
@@ -392,7 +392,7 @@ Each completed corpus contains 30 runs for each tested normalization method: RMS
 
 ### 7.1 The City of God
 
-*The City of God* is the largest completed corpus in the current experiment set. The source text is a Project Gutenberg edition of *The City of God, Volume I* by Augustine of Hippo, translated and edited in a public-domain edition. The file includes front matter, title-page material, table-of-contents structure, editor’s preface, footnotes, book divisions, argument summaries, numbered sections, and long-form theological prose. :contentReference[oaicite:0]{index=0}
+*The City of God* is the largest completed corpus in the current experiment set. The source text is a Project Gutenberg edition of *The City of God, Volume I* by Augustine of Hippo, translated and edited in a public-domain edition. The file includes front matter, title-page material, table-of-contents structure, editor’s preface, footnotes, book divisions, argument summaries, numbered sections, and long-form theological prose. [5]
 
 | Property | Value |
 |---|---:|
@@ -419,7 +419,7 @@ Because this corpus is larger and more formally structured, it provides a differ
 
 ### 7.2 Anne of Green Gables
 
-*Anne of Green Gables* is the second completed corpus in the current experiment set. The source text is a Project Gutenberg edition of L. M. Montgomery’s novel. The file includes Project Gutenberg front matter, title and contents material, chapter headings, narrative prose, dialogue, character names, quoted speech, and descriptive scene writing. :contentReference[oaicite:1]{index=1}
+*Anne of Green Gables* is the second completed corpus in the current experiment set. The source text is a Project Gutenberg edition of L. M. Montgomery’s novel. The file includes Project Gutenberg front matter, title and contents material, chapter headings, narrative prose, dialogue, character names, quoted speech, and descriptive scene writing. [3]
 
 | Property | Value |
 |---|---:|
@@ -446,7 +446,7 @@ This corpus gives the model a different byte-level distribution: more dialogue, 
 
 ### 7.3 The Adventures of Sherlock Holmes
 
-*The Adventures of Sherlock Holmes* is reserved as an additional corpus section. The uploaded source text is a Project Gutenberg edition of Arthur Conan Doyle’s short-story collection. The file includes front matter, a contents list, story divisions, Roman-numeral section markers, narrative prose, dialogue, mystery-case exposition, proper nouns, dates, and recurring Holmes/Watson conversational structure. :contentReference[oaicite:2]{index=2}
+*The Adventures of Sherlock Holmes* is reserved as an additional corpus section. The uploaded source text is a Project Gutenberg edition of Arthur Conan Doyle’s short-story collection. The file includes front matter, a contents list, story divisions, Roman-numeral section markers, narrative prose, dialogue, mystery-case exposition, proper nouns, dates, and recurring Holmes/Watson conversational structure. [4]
 
 | Property | Value |
 |---|---:|
@@ -487,11 +487,11 @@ Validation loss is computed on randomly sampled validation batches, not by exhau
 
 Best validation loss is the lowest validation loss observed across measured curve checkpoints in a training run:
 
-\[
+$$
 L_{\text{best}} = \min_{t \in \mathcal{T}} L_{\text{val}}(t)
-\]
+$$
 
-where \(\mathcal{T}\) is the set of measured evaluation checkpoints.
+where $\mathcal{T}$ is the set of measured evaluation checkpoints.
 
 In the raw result rows, this metric is stored as:
 ```txt
@@ -503,9 +503,9 @@ This value is based on the checkpoint evaluations recorded during training, not 
 
 Final reported validation loss is the separate validation evaluation performed after the training loop finishes:
 
-[
+$$
 L_{\text{report-final}} = L_{\text{val}}^{\text{post-run}}
-]
+$$
 
 In the raw result rows, this metric is stored as:
 
@@ -519,11 +519,11 @@ This value may differ from the final curve validation loss because it is produce
 
 Final curve validation loss is the validation loss recorded at the last measured checkpoint in the learning-curve CSV:
 
-[
+$$
 L_{\text{curve-final}} = L_{\text{val}}(T)
-]
+$$
 
-where (T) is the final checkpoint step recorded in the curve file.
+where $T$ is the final checkpoint step recorded in the curve file.
 
 This metric is used for curve-based comparisons such as average checkpoint validation and curve overfitting gap.
 
@@ -531,11 +531,11 @@ This metric is used for curve-based comparisons such as average checkpoint valid
 
 Average validation loss across checkpoints is the mean of all validation-loss values recorded in the learning-curve CSV:
 
-[
+$$
 L_{\text{avg-checkpoint}} = \frac{1}{N}\sum_{t \in \mathcal{T}}L_{\text{val}}(t)
-]
+$$
 
-where (N) is the number of measured checkpoints.
+where $N$ is the number of measured checkpoints.
 
 This metric summarizes validation behavior across the training trajectory instead of only reporting the best or final point.
 
@@ -543,9 +543,9 @@ This metric summarizes validation behavior across the training trajectory instea
 
 Curve overfitting gap measures how much validation loss increased after the best measured curve checkpoint:
 
-[
+$$
 G_{\text{curve-overfit}} = L_{\text{curve-final}} - L_{\text{best}}
-]
+$$
 
 A larger positive value indicates that validation loss rose more between the best observed checkpoint and the final measured curve checkpoint.
 
@@ -555,9 +555,9 @@ This metric is computed from the curve CSV, not directly from the raw-summary `v
 
 Training loss is the final per-step training loss recorded at the end of each run:
 
-[
+$$
 L_{\text{train-final}} = L_{\text{train}}(T)
-]
+$$
 
 In the raw result rows, this metric is stored as:
 
@@ -620,7 +620,7 @@ The report distinguishes between two levels of aggregation:
 1. **Per-run metrics**, where each seed produces one result row for a given normalization method.
 2. **Aggregate metrics**, where the 30 per-seed results are summarized by normalization method within each corpus.
 
-The training script writes per-run result rows containing fields such as `train_loss`, `val_loss`, `best_val_loss`, `best_step`, `grad_norm`, `train_tok_s`, `eval_tok_s`, `peak_alloc_mb`, and `peak_reserved_mb`. It then groups results by normalization method and writes aggregate summary fields for each metric. :contentReference[oaicite:0]{index=0} :contentReference[oaicite:1]{index=1}
+The training script writes per-run result rows containing fields such as `train_loss`, `val_loss`, `best_val_loss`, `best_step`, `grad_norm`, `train_tok_s`, `eval_tok_s`, `peak_alloc_mb`, and `peak_reserved_mb`. It then groups results by normalization method and writes aggregate summary fields for each metric. [6]
 
 For each reported metric, the statistical summary includes:
 
@@ -638,23 +638,23 @@ For paired comparisons, the same seed index is compared across normalization met
 
 For each corpus, results are grouped by normalization method:
 
-\[
+$$
 G_{c,m} = \{x_{1}, x_{2}, ..., x_{n}\}
-\]
+$$
 
 where \(c\) is the corpus, \(m\) is the normalization method, and \(n=30\) for each completed method/corpus pair.
 
 The mean for a metric is:
 
-\[
+$$
 \bar{x}_{c,m} = \frac{1}{n}\sum_{i=1}^{n}x_i
-\]
+$$
 
 The median, minimum, and maximum are also reported for each metric:
 
-\[
+$$
 \operatorname{median}(G_{c,m}), \quad \min(G_{c,m}), \quad \max(G_{c,m})
-\]
+$$
 
 The existing training script writes mean, standard deviation, minimum, and maximum into the generated summary CSV. Median and confidence intervals are computed from the raw per-seed rows for the manuscript tables.
 
@@ -662,29 +662,29 @@ The existing training script writes mean, standard deviation, minimum, and maxim
 
 For each metric, a 95% confidence interval is computed over the 30 seed results:
 
-\[
+$$
 CI_{95} = \bar{x} \pm t_{0.975,n-1}\frac{s}{\sqrt{n}}
-\]
+$$
 
 where:
 
-\[
+$$
 s = \sqrt{\frac{1}{n-1}\sum_{i=1}^{n}(x_i-\bar{x})^2}
-\]
+$$
 
 and \(t_{0.975,n-1}\) is the two-sided critical value from the Student \(t\)-distribution with \(n-1\) degrees of freedom.
 
 For completed corpus/method groups:
 
-\[
+$$
 n = 30
-\]
+$$
 
 so the confidence interval uses:
 
-\[
+$$
 df = 29
-\]
+$$
 
 ### 9.3 Paired Seed Comparisons
 
@@ -692,15 +692,15 @@ Because each normalization method uses the same seed list within a corpus, paire
 
 For a metric \(x\), the paired difference between a tested variant and RMSNorm is:
 
-\[
+$$
 d_i = x_{i,\text{variant}} - x_{i,\text{RMS}}
-\]
+$$
 
 The mean paired difference is:
 
-\[
+$$
 \bar{d} = \frac{1}{n}\sum_{i=1}^{n}d_i
-\]
+$$
 
 For loss metrics, a negative paired difference means the tested variant has a lower value than RMSNorm for that metric. For throughput metrics, a positive paired difference means the tested variant has higher throughput than RMSNorm. For memory metrics, a negative paired difference means the tested variant uses less memory than RMSNorm.
 
@@ -714,15 +714,15 @@ Paired comparisons are reported separately for:
 
 Effect sizes are reported for paired comparisons using the standardized paired mean difference:
 
-\[
+$$
 d_z = \frac{\bar{d}}{s_d}
-\]
+$$
 
-where \(s_d\) is the standard deviation of the paired differences:
+where \(s_d\)$ is the standard deviation of the paired differences:
 
-\[
+$$
 s_d = \sqrt{\frac{1}{n-1}\sum_{i=1}^{n}(d_i-\bar{d})^2}
-\]
+$$
 
 This gives the magnitude of the difference relative to seed-to-seed variability.
 
@@ -734,35 +734,35 @@ Win counts report how often one method has the preferred value across matched se
 
 For loss and memory metrics, a lower value is counted as a win:
 
-\[
+$$
 \operatorname{win}_i =
 \begin{cases}
 1, & x_{i,\text{variant}} < x_{i,\text{baseline}} \\
 0, & \text{otherwise}
 \end{cases}
-\]
+$$
 
 For throughput metrics, a higher value is counted as a win:
 
-\[
+$$
 \operatorname{win}_i =
 \begin{cases}
 1, & x_{i,\text{variant}} > x_{i,\text{baseline}} \\
 0, & \text{otherwise}
 \end{cases}
-\]
+$$
 
 The win count is:
 
-\[
+$$
 W = \sum_{i=1}^{n}\operatorname{win}_i
-\]
+$$
 
 Win counts are reported as:
 
-\[
+$$
 W / n
-\]
+$$
 
 For completed corpus/method comparisons, this is reported out of 30 matched seeds.
 
@@ -770,9 +770,9 @@ For completed corpus/method comparisons, this is reported out of 30 matched seed
 
 Relative percentage difference against RMSNorm is reported as:
 
-\[
+$$
 \Delta_{\%} = 100 \cdot \frac{x_{\text{variant}} - x_{\text{RMS}}}{x_{\text{RMS}}}
-\]
+$$
 
 For loss and memory metrics, negative values indicate lower values than RMSNorm. For throughput metrics, positive values indicate higher throughput than RMSNorm.
 
@@ -1351,17 +1351,20 @@ Planned extensions:
 
 ## References
 
-Ba, J. L., Kiros, J. R., & Hinton, G. E. (2016). *Layer Normalization*. arXiv:1607.06450. :contentReference[oaicite:0]{index=0}
+[0] Ba, J. L., Kiros, J. R., & Hinton, G. E. (2016). *Layer Normalization*. arXiv:1607.06450. https://arxiv.org/abs/1607.06450
 
-Zhang, B., & Sennrich, R. (2019). *Root Mean Square Layer Normalization*. Advances in Neural Information Processing Systems 32. arXiv:1910.07467. :contentReference[oaicite:1]{index=1}
+[1] Zhang, B., & Sennrich, R. (2019). *Root Mean Square Layer Normalization*. Advances in Neural Information Processing Systems 32. arXiv:1910.07467. https://arxiv.org/abs/1910.07467
 
-Hoffer, E., Banner, R., Golan, I., & Soudry, D. (2018). *Norm Matters: Efficient and Accurate Normalization Schemes in Deep Networks*. Advances in Neural Information Processing Systems 31. :contentReference[oaicite:2]{index=2}
+[2] Hoffer, E., Banner, R., Golan, I., & Soudry, D. (2018). *Norm Matters: Efficient and Accurate Normalization Schemes in Deep Networks*. Advances in Neural Information Processing Systems 31. https://arxiv.org/abs/1803.01814  
+PDF: https://papers.neurips.cc/paper/7485-norm-matters-efficient-and-accurate-normalization-schemes-in-deep-networks.pdf
 
-Montgomery, L. M. *Anne of Green Gables*. Project Gutenberg eBook #45. Source corpus used for the Anne of Green Gables experiments. :contentReference[oaicite:3]{index=3}
+[3] Montgomery, L. M. *Anne of Green Gables*. Project Gutenberg eBook #45. Source corpus used for the Anne of Green Gables experiments. https://www.gutenberg.org/ebooks/45
 
-Doyle, A. C. *The Adventures of Sherlock Holmes*. Project Gutenberg eBook #1661. Reserved source corpus for the Sherlock Holmes experiments. :contentReference[oaicite:4]{index=4}
+[4] Doyle, A. C. *The Adventures of Sherlock Holmes*. Project Gutenberg eBook #1661. Reserved source corpus for the Sherlock Holmes experiments. https://www.gutenberg.org/ebooks/1661
 
-Augustine of Hippo. *The City of God, Volume I*. Translated by Marcus Dods. Project Gutenberg eBook #45304. Source corpus used for the City of God experiments. :contentReference[oaicite:5]{index=5}
+[5] Augustine of Hippo. *The City of God, Volume I*. Translated by Marcus Dods. Project Gutenberg eBook #45304. Source corpus used for the City of God experiments. https://www.gutenberg.org/ebooks/45304
+
+[6] AEMxr. *norm_ablation_multiseed_clean_progress_fixed.py*. Experiment runner used for normalization selection, byte-level dataset construction, seed-isolated training runs, curve CSV generation, aggregate summaries, and metadata output. ./norm_ablation_multiseed_clean_progress_fixed.py
 
 ## Appendix A: Full Raw Result Tables
 
@@ -1524,7 +1527,7 @@ Pending.
 
 ## Appendix D: Implementation Listings
 
-This appendix contains the exact normalization implementations used in the experiment script. The tested normalization variants are implemented as PyTorch modules and selected through the `make_norm` factory function. The transformer block applies the selected normalization method in pre-norm position before attention and before the feedforward sublayer, followed by a final normalization before the output head. :contentReference[oaicite:6]{index=6}
+This appendix contains the exact normalization implementations used in the experiment script. The tested normalization variants are implemented as PyTorch modules and selected through the `make_norm` factory function. The transformer block applies the selected normalization method in pre-norm position before attention and before the feedforward sublayer, followed by a final normalization before the output head. [6]
 
 ### Appendix D.1 RMSNorm
 
