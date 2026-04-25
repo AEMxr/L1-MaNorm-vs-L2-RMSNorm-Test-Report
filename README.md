@@ -175,6 +175,7 @@ All three tested methods:
 - do not subtract the mean
 - use the same learned elementwise gain parameter $\gamma$
 - differ only in the denominator scale statistic
+
 ## 5. Implementation Details
 
 The tested normalization variants were implemented as drop-in replacements at the same normalization sites in the decoder-only transformer. Each variant receives the same hidden activation tensor, uses the same learned gain parameter shape, and returns a tensor with the same shape as the input. The surrounding attention, feedforward, residual, optimizer, and training code are unchanged.
@@ -187,9 +188,11 @@ All tested variants normalize over the final tensor dimension:
 ```python
 dim=-1
 ```
-For a hidden tensor shaped Like:
+For a hidden tensor shaped like:
+```python
 (batch, sequence_length, hidden_dim)
-the normalization statistic is computed independently for each token position over hidden_dim.
+```
+the normalization statistic is computed independently for each token position over `hidden_dim`.
 
 The model uses a pre-norm decoder-only transformer block. Within each block, the selected normalization variant is applied before the causal self-attention sublayer and before the feedforward sublayer:
 ```python
@@ -256,7 +259,7 @@ All three tested normalization variants use the same:
 - input and output tensor shapes
 - hidden-dimension reduction axis, dim=-1
 - learned elementwise gain parameter, weight
-- default numerical-stability value, eps = 1e-5
+- default numerical-stability value, `eps = 1e-5`
 - no learned bias parameter
 - optimizer
 - learning-rate schedule
@@ -785,7 +788,7 @@ Relative differences are computed using aggregate means unless the table explici
 The current result set contains completed runs for two corpora: *The City of God* and *Anne of Green Gables*. The Sherlock Holmes corpus is reserved for the next completed result set.
 
 | Corpus | Status | RMSNorm Runs | MeanAbsNorm Runs | MeanAbsNorm-NoCorr Runs | Total Runs |
-|---|---:|---:|---:|---:|---:|
+|---|---|---:|---:|---:|---:|
 | *The City of God* | Complete | 30 | 30 | 30 | 90 |
 | *Anne of Green Gables* | Complete | 30 | 30 | 30 | 90 |
 | *The Adventures of Sherlock Holmes* | Pending | 0 | 0 | 0 | 0 |
@@ -809,39 +812,43 @@ Across the completed corpora, the normalization methods show different behavior 
 
 ### 10.3 Aggregate Tables
 
-This section reports expanded aggregate statistics for each corpus and normalization method, including mean, standard deviation, median, minimum, maximum, and 95% confidence intervals.
+This section reports aggregate mean and sample standard deviation across the 30 completed seeds for each corpus and normalization method.
 
 #### 10.3.1 The City of God Aggregate Statistics
 
 | Metric | RMSNorm Mean | RMSNorm Std | MeanAbsNorm Mean | MeanAbsNorm Std | NoCorr Mean | NoCorr Std |
 |---|---:|---:|---:|---:|---:|---:|
-| Best Val | | | | | | |
-| Final Report Val | | | | | | |
-| Avg Checkpoint Val | | | | | | |
-| Curve Overfit Gap | | | | | | |
-| Train tok/s | | | | | | |
-| Eval tok/s | | | | | | |
-| Reserved MB | | | | | | |
+| Best Val | 1.3984 | 0.0244 | 1.4022 | 0.0246 | 1.6602 | 0.1063 |
+| Final Report Val | 1.5323 | 0.0369 | 1.5059 | 0.0431 | 1.6469 | 0.1075 |
+| Avg Checkpoint Val | 1.7669 | 0.0168 | 1.7752 | 0.0196 | 2.1897 | 0.0673 |
+| Curve Overfit Gap | 0.1572 | 0.0518 | 0.1264 | 0.0482 | 0.0026 | 0.0135 |
+| Train tok/s | 15889.8 | 209.5 | 15690.4 | 135.6 | 15928.6 | 166.9 |
+| Eval tok/s | 45455.7 | 612.7 | 44882.1 | 665.7 | 45520.6 | 408.5 |
+| Reserved MB | 10788 | 0 | 10436 | 0 | 10436 | 0 |
 
 #### 10.3.2 Anne of Green Gables Aggregate Statistics
 
 | Metric | RMSNorm Mean | RMSNorm Std | MeanAbsNorm Mean | MeanAbsNorm Std | NoCorr Mean | NoCorr Std |
 |---|---:|---:|---:|---:|---:|---:|
-| Best Val | | | | | | |
-| Final Report Val | | | | | | |
-| Avg Checkpoint Val | | | | | | |
-| Curve Overfit Gap | | | | | | |
-| Train tok/s | | | | | | |
-| Eval tok/s | | | | | | |
-| Reserved MB | | | | | | |
+| Best Val | 1.6581 | 0.0354 | 1.6553 | 0.0363 | 1.6554 | 0.0466 |
+| Final Report Val | 3.1545 | 0.0846 | 3.0839 | 0.0986 | 2.3539 | 0.1866 |
+| Avg Checkpoint Val | 2.3210 | 0.0317 | 2.2831 | 0.0270 | 2.0424 | 0.0344 |
+| Curve Overfit Gap | 1.5167 | 0.1035 | 1.4445 | 0.0960 | 0.7153 | 0.1830 |
+| Train tok/s | 15697.9 | 210.0 | 15874.8 | 168.7 | 15601.4 | 198.4 |
+| Eval tok/s | 44722.4 | 749.5 | 45342.9 | 450.5 | 44620.1 | 674.5 |
+| Reserved MB | 10788 | 0 | 10436 | 0 | 10436 | 0 |
 
 ### 10.4 Relative Differences vs RMSNorm
 
 Relative differences are computed against RMSNorm within the same corpus. For loss and memory metrics, negative values indicate lower values than RMSNorm. For throughput metrics, positive values indicate higher throughput than RMSNorm.
 
-\[
-\Delta_{\%} = 100 \cdot \frac{x_{\text{variant}} - x_{\text{RMS}}}{x_{\text{RMS}}}
-\]
+$$
+\Delta_{\mathrm{rel}} =
+100 \times
+\frac{x_{\mathrm{variant}} - x_{\mathrm{RMS}}}{x_{\mathrm{RMS}}}
+$$
+
+The resulting value is reported as a percentage.
 
 #### 10.4.1 The City of God Relative Differences
 
@@ -849,6 +856,8 @@ Relative differences are computed against RMSNorm within the same corpus. For lo
 |---|---:|---:|---:|---:|---:|---:|---:|
 | MeanAbsNorm | +0.27% | -1.72% | +0.47% | -19.59% | -1.25% | -1.26% | -3.26% |
 | NoCorr | +18.72% | +7.48% | +23.93% | -98.35% | +0.24% | +0.14% | -3.26% |
+
+Note: `Curve Overfit Gap Δ%` measures the change after the best checkpoint, not the overall validation level. A smaller gap can come from a flatter curve, so it should be read alongside `Best Val Δ%` and `Avg Checkpoint Val Δ%`.
 
 #### 10.4.2 Anne of Green Gables Relative Differences
 
@@ -874,7 +883,7 @@ Recommended figures for this section:
 | Figure 7 | Training throughput by corpus and normalization method |
 | Figure 8 | Reserved GPU memory by corpus and normalization method |
 
-Expecting further corpora data
+Additional corpus figures will be added after the Sherlock Holmes run is complete.
 
 ## 11. Per-Corpus Analysis
 
@@ -978,9 +987,9 @@ NoCorr shows the largest change between corpora. On *The City of God*, NoCorr ha
 
 Curve overfitting gap is computed as:
 
-\[
+$$
 G_{\text{curve-overfit}} = L_{\text{curve-final}} - L_{\text{best}}
-\]
+$$
 
 On *The City of God*, MeanAbsNorm has a smaller curve overfitting gap than RMSNorm:
 
@@ -1030,15 +1039,15 @@ On *Anne of Green Gables*, MeanAbsNorm has the highest throughput, while NoCorr 
 
 Both MeanAbsNorm and NoCorr use lower reserved GPU memory than RMSNorm on both completed corpora:
 
-\[
+$$
 10436\text{ MB} \quad \text{vs} \quad 10788\text{ MB}
-\]
+$$
 
 This is a consistent reserved-memory reduction of approximately:
 
-\[
+$$
 -3.26\%
-\]
+$$
 
 Throughput is less consistent than memory. MeanAbsNorm is slower than RMSNorm on *The City of God* but faster on *Anne of Green Gables*. NoCorr is slightly faster than RMSNorm on *The City of God* but slightly slower on *Anne of Green Gables*.
 
@@ -1259,8 +1268,6 @@ python norm_ablation_multiseed_clean_progress_fixed.py \
   --outdir The_Adventures_of_Sherlock_Holmes \
   --tag <new-run-tag>
 ```
-
-### 15.3 Environment
 
 ### 15.3 Environment
 
